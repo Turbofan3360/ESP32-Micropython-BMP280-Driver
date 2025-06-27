@@ -36,38 +36,18 @@ class bmp280:
     
     def get_trim_values(self):
         # Reading trim values from chip
-        digit = self.bmp280.readfrom_mem(self.bmpaddress, 0x88, 2)
-        self.trim_values["dig_t1"] = struct.unpack("<H", digit)
+        digits = self.bmp280.readfrom_mem(self.bmpaddress, 0x88, 24)
         
-        digit = self.bmp280.readfrom_mem(self.bmpaddress, 0x8A, 2)
-        self.trim_values["dig_t2"] = struct.unpack("<h", digit)
+        self.trim_values["dig_t1"] = struct.unpack("<H", digits[0:2])
+        self.trim_values["dig_t2"] = struct.unpack("<h", digits[2:4])
+        self.trim_values["dig_t3"] = struct.unpack("<h", digits[4:6])
         
-        digit = self.bmp280.readfrom_mem(self.bmpaddress, 0x8C, 2)
-        self.trim_values["dig_t3"] = struct.unpack("<h", digit)
-        
-        digit = self.bmp280.readfrom_mem(self.bmpaddress, 0x8E, 2)
-        self.trim_values["dig_p1"] = struct.unpack("<H", digit)
-        
-        digit = self.bmp280.readfrom_mem(self.bmpaddress, 0x90, 2)
-        self.trim_values["dig_p2"] = struct.unpack("<h", digit)
-        
-        digit = self.bmp280.readfrom_mem(self.bmpaddress, 0x92, 2)
-        self.trim_values["dig_p3"] = struct.unpack("<h", digit)
-        
-        digit = self.bmp280.readfrom_mem(self.bmpaddress, 0x94, 2)
-        self.trim_values["dig_p4"] = struct.unpack("<h", digit)
-        
-        digit = self.bmp280.readfrom_mem(self.bmpaddress, 0x96, 2)
-        self.trim_values["dig_p5"] = struct.unpack("<h", digit)
-        
-        digit = self.bmp280.readfrom_mem(self.bmpaddress, 0x98, 2)
-        self.trim_values["dig_p6"] = struct.unpack("<h", digit)
-        
-        digit = self.bmp280.readfrom_mem(self.bmpaddress, 0x9A, 2)
-        self.trim_values["dig_p7"] = struct.unpack("<h", digit)
-        
-        digit = self.bmp280.readfrom_mem(self.bmpaddress, 0x9C, 2)
-        self.trim_values["dig_p8"] = struct.unpack("<h", digit)
-        
-        digit = self.bmp280.readfrom_mem(self.bmpaddress, 0x9E, 2)
-        self.trim_values["dig_p9"] = struct.unpack("<h", digit)
+        self.trim_values["dig_p1"] = struct.unpack("<H", digits[6:8])
+        self.trim_values["dig_p2"] = struct.unpack("<h", digits[8:10])
+        self.trim_values["dig_p3"] = struct.unpack("<h", digits[10:12])
+        self.trim_values["dig_p4"] = struct.unpack("<h", digits[12:14])
+        self.trim_values["dig_p5"] = struct.unpack("<h", digits[14:16])
+        self.trim_values["dig_p6"] = struct.unpack("<h", digits[16:18])
+        self.trim_values["dig_p7"] = struct.unpack("<h", digits[18:20])
+        self.trim_values["dig_p8"] = struct.unpack("<h", digits[20:22])
+        self.trim_values["dig_p9"] = struct.unpack("<h", digits[22:24])

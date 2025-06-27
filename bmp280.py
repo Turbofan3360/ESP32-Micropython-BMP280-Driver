@@ -19,8 +19,12 @@ class bmp280:
             
             }
         
-        # Waking the sensor up
-        self.bmp280.writeto_mem(self.bmpaddress, self.registers["measurement_ctrl"], bytes([0x03]))
+        # Setting up sensor
+        self.setup()
     
     def setup(self):
+        # Waking sensor up and setting oversampling rates for pressure/temperature measurement
+        self.bmp280.writeto_mem(self.bmpaddress, self.registers["measurement_ctrl"], bytes([0x57]))
         
+        # Setting standby time length, IIR filter
+        self.bmp280.writeto_mem(self.bmpaddress, self.registers["config"], bytes([0x10]))

@@ -78,16 +78,20 @@ class bmp280:
         # Calculating the pressure (Pa) using the trim values
         press_var1 = temp_fine - 128000
         press_var2 = press_var1 * press_var1 * self.trim_values["dig_p6"]
-        press_var2 += press_var1 * (self.trim_values["dig_p5"] << 17)
+        press_var2 += self.trim_values["dig_p5"] << 17
         press_var2 += self.trim_values["dig_p4"] << 35
         press_var1 = ((press_var1 * press_var2 * self.trim_values["dig_p3"]) >> 8) + ((press_var1 * self.trim_values["dig_p2"]) << 12)
-        press_var1 = (140737488355328 + press_var1) * (self.trim_values["dig_p1"] >> 33)
+        press_var1 = (((1<<47) + press_var1) * self.trim_values["dig_p1"]) >> 33
         
         if press_var1 == 0:
             press = 0
         else:
-            press = 1048576 - press_raw
-            press = (((press << 31) - press_var2) * 3125)/press_var1
+            press = (1048576 - press_raw - (press_var2 >> 12)) * 3125
+            
+            if press < 2147483648:
+                press = (press << 1)/press_var1
+            else:
+                press = (press/press_var1) * 2
             
             press_var1 = (self.trim_values["dig_p9"] * (press >> 13) * (press >> 13)) >> 25
             press_var2 = (self.trim_values["dig_p8"] * press) >> 19

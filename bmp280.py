@@ -22,10 +22,10 @@ class bmp280:
         self.trim_values = {}
         
         # Setting up sensor
-        self.setup()
+        self._setup()
         
         # Getting factory-programmed trim values from the BMP280's NVM
-        self.get_trim_values()
+        self._get_trim_values()
     
     def _setup(self):
         # Waking sensor up and setting oversampling rates for pressure/temperature measurement
@@ -62,3 +62,38 @@ class bmp280:
         temp_decoded = (temp[0] << 12) | (temp[1] << 4) | (temp[2] >> 4)
         
         return pressure_decoded, temp_decoded
+    
+    def get_press_temp(self):
+        # Getting raw pressure/temp data
+        press_raw, temp_raw = self._get_pressure_temp_raw()
+        
+        # Calculating the temperature (deg. C) using the trim values
+        temp_var1 = ((temp_raw >> 3) - (self.trim_values["dig_t1"] << 1)) * (self.trim_values["dig_t2"] >> 11)
+        temp_var2 = ((temp_raw >> 4) - self.trim_values["dig_t1"]) * (((temp_raw >> 4) - self.trim_values["dig_t1"]) >> 12) * (self.trim_values["dig_t3"] >> 14)
+        temp_fine = temp_var1 + temp_var2
+        
+        temp = ((temp_fine * 5) + 128) >> 8
+        temp /= 100
+        
+        # Calculating the pressure (Pa) using the trim values
+        press_var1 = temp_fine - 128000
+        press_var2 = press_var1 * press_var1 * self.trim_values["dig_p6"]
+        press_var2 += press_var1 * (self.trim_values["dig_p5"] << 17)
+        press_var2 += self.trim_values["dig_p4"] << 35
+        press_var1 = ((press_var1 * press_var2 * self.trim_values["dig_p3"]) >> 8) + ((press_var1 * self.trim_values["dig_p2"]) << 12)
+        press_var1 = (140737488355328 + press_var1) * (self.trim_values["dig_p1"] >> 33)
+        
+        if press_var1 == 0:
+            press = 0
+        else:
+            press = 1048576 - press_raw
+            press = (((press << 31) - press_var2) * 3125)/press_var1
+            
+            press_var1 = (self.trim_values["dig_p9"] * (press >> 13) * (press >> 13)) >> 25
+            press_var2 = (self.trim_values["dig_p8"] * press) >> 19
+            
+            press = ((press + press_var1 + press_var2) >> 8) + (self.trim_values["dig_p7"] << 4)
+            
+            press /= 256
+        
+        return press, temp

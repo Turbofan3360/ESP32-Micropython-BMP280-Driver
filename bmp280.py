@@ -1,9 +1,11 @@
 from machine import SoftI2C, Pin
 import struct
+import time
 
 class bmp280:
     def __init__(self, scl, sda, init_gps_alt=0):
         self.bmp280 = SoftI2C(scl=Pin(scl), sda=Pin(sda), freq=400000)
+        self.starting_gpsalt = init_gps_alt
         
         self.bmpaddress = 0x76
         
@@ -75,7 +77,7 @@ class bmp280:
         temp = ((temp_fine * 5) + 128) >> 8
         temp /= 100
         
-        # Calculating the pressure (Pa) using the trim values
+        # Calculating the pressure (hPa) using the trim values
         press_var1 = temp_fine - 128000
         press_var2 = press_var1 * press_var1 * self.trim_values["dig_p6"]
         press_var2 += self.trim_values["dig_p5"] << 17
@@ -89,9 +91,9 @@ class bmp280:
             press = (1048576 - press_raw - (press_var2 >> 12)) * 3125
             
             if press < 2147483648:
-                press = (press << 1)/press_var1
+                press = (press << 1)//press_var1
             else:
-                press = (press/press_var1) * 2
+                press = (press//press_var1) * 2
             
             press_var1 = (self.trim_values["dig_p9"] * (press >> 13) * (press >> 13)) >> 25
             press_var2 = (self.trim_values["dig_p8"] * press) >> 19
@@ -101,3 +103,8 @@ class bmp280:
             press /= 256
         
         return press, temp
+    
+module = bmp280(47, 48)
+while True:
+    print(module.get_press_temp())
+    time.sleep(1)

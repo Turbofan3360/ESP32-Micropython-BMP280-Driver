@@ -1,6 +1,5 @@
 from machine import SoftI2C, Pin
 import struct
-import time
 
 class bmp280:
     def __init__(self, scl, sda, init_gps_alt=0):
@@ -103,8 +102,10 @@ class bmp280:
             press /= 256
         
         return press, temp
-    
-module = bmp280(47, 48)
-while True:
-    print(module.get_press_temp())
-    time.sleep(1)
+
+if __name__ == "__main__":
+    import time
+    module = bmp280(47, 48)
+    while True:
+        print(module.get_press_temp())
+        time.sleep(1)

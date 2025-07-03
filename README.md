@@ -15,14 +15,14 @@ changes in order to determine the module's absolute altitude - rather than just 
 
 ### Example usage: ###
 
-``
+`
 import bmp280.py as BMP
 
 pressure_sensor = BMP.bmp280(47, 48, address=0x77, init_gps_alt=5)
 
 press, temp, alt = pressure_sensor.get_press_temp_alt()
 press, temp = pressure_sensor.get_press_temp()
-``
+`
 
 For most usage, you won't need to include the address/init_gps_alt parameters in the driver set up, but I included them for completeness.
 

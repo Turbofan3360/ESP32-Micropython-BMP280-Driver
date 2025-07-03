@@ -2,11 +2,11 @@ from machine import SoftI2C, Pin
 import struct
 
 class bmp280:
-    def __init__(self, scl, sda, init_gps_alt=0):
+    def __init__(self, scl, sda, address=0x76, init_gps_alt=0):
         self.bmp280 = SoftI2C(scl=Pin(scl), sda=Pin(sda), freq=400000)
         self.starting_gpsalt = init_gps_alt
         
-        self.bmpaddress = 0x76
+        self.bmpaddress = address
         
         self.registers = {
             "id" : 0xD0,
@@ -22,11 +22,15 @@ class bmp280:
         
         self.trim_values = {}
         
-        # Setting up sensor
+        # Setting up sensor and getting factory-programmed trim values from the BMP280's NVM
         self._setup()
-        
-        # Getting factory-programmed trim values from the BMP280's NVM
         self._get_trim_values()
+        
+        # Reading initial pressure/temperature values (used to calculate altitude readings)
+        self.p0, self.t0 = self.get_press_temp()
+        self.t0 += 273.15 # Converting to degrees Kelvin
+        
+        self.baro_equation_coefficient = (8.314*0.0065)/(9.80665*0.028964) # coefficient required for barometric equation: Rg*L/gM
     
     def _setup(self):
         # Waking sensor up and setting oversampling rates for pressure/temperature measurement
@@ -102,10 +106,19 @@ class bmp280:
             press /= 256
         
         return press, temp
+    
+    def get_press_temp_alt(self):
+        press, temp = self.get_press_temp()
+        
+        # Calculating altitude (in m) based on pressure using barometric equation
+        alt = self.starting_gpsalt + (self.t0/0.0065)*(1-pow(press/self.p0, self.baro_equation_coefficient))
+        
+        return press, temp, alt
+        
 
 if __name__ == "__main__":
     import time
-    module = bmp280(47, 48)
+    module = bmp280(47, 48) # INPUT YOUR SCL/SDA PINS HERE
     while True:
-        print(module.get_press_temp())
+        print(module.get_press_temp_alt())
         time.sleep(1)

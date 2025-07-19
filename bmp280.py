@@ -1,7 +1,7 @@
 from machine import SoftI2C, Pin
 import struct
 
-class bmp280:
+class BMP280:
     def __init__(self, scl, sda, address=0x76, init_gps_alt=0):
         self.bmp280 = SoftI2C(scl=Pin(scl), sda=Pin(sda), freq=400000)
         self.starting_gpsalt = init_gps_alt
@@ -32,12 +32,20 @@ class bmp280:
         
         self.baro_equation_coefficient = (8.314*0.0065)/(9.80665*0.028964) # coefficient required for barometric equation: Rg*L/gM
     
+    def _log(self, string):
+        print(string)
+    
     def _setup(self):
+        # Resetting sensor
+        self.bmp280.writeto_mem(self.bmpaddress, self.registers["reset"], bytes([0xB6]))
+        
         # Waking sensor up and setting oversampling rates for pressure/temperature measurement
         self.bmp280.writeto_mem(self.bmpaddress, self.registers["measurement_ctrl"], bytes([0x57]))
         
         # Setting standby time length, IIR filter
         self.bmp280.writeto_mem(self.bmpaddress, self.registers["config"], bytes([0x10]))
+        
+        self._log("Sensor setup")
     
     def _get_trim_values(self):
         # Reading trim values from chip
@@ -56,15 +64,16 @@ class bmp280:
         self.trim_values["dig_p7"] = struct.unpack("<h", digits[18:20])[0]
         self.trim_values["dig_p8"] = struct.unpack("<h", digits[20:22])[0]
         self.trim_values["dig_p9"] = struct.unpack("<h", digits[22:24])[0]
+        
+        self._log("Trim values read")
     
     def _get_pressure_temp_raw(self):
         # Burst-reading the raw temp/pressure bytes
-        pressure = self.bmp280.readfrom_mem(self.bmpaddress, self.registers["pressure"], 3)
-        temp = self.bmp280.readfrom_mem(self.bmpaddress, self.registers["temp"], 3)
+        data = self.bmp280.readfrom_mem(self.bmpaddress, self.registers["pressure"], 6)
         
         # Decoding temp/pressure bytearrays - the data comes packaged in format MSB - LSB - XLSB
-        pressure_decoded = (pressure[0] << 12) | (pressure[1] << 4) | (pressure[2] >> 4)
-        temp_decoded = (temp[0] << 12) | (temp[1] << 4) | (temp[2] >> 4)
+        pressure_decoded = (data[0] << 12) | (data[1] << 4) | (data[2] >> 4)
+        temp_decoded = (temp[3] << 12) | (temp[4] << 4) | (temp[5] >> 4)
         
         return pressure_decoded, temp_decoded
     
@@ -73,8 +82,9 @@ class bmp280:
         press_raw, temp_raw = self._get_pressure_temp_raw()
         
         # Calculating the temperature (deg. C) using the trim values
-        temp_var1 = ((temp_raw >> 3) - (self.trim_values["dig_t1"] << 1)) * (self.trim_values["dig_t2"] >> 11)
-        temp_var2 = ((temp_raw >> 4) - self.trim_values["dig_t1"]) * (((temp_raw >> 4) - self.trim_values["dig_t1"]) >> 12) * (self.trim_values["dig_t3"] >> 14)
+        temp_var1 = (((temp_raw >> 3) - (self.trim_values["dig_t1"] << 1)) * self.trim_values["dig_t2"]) >> 11
+        temp_var2 = (temp_raw >> 4) - self.trim_values["dig_t1"]
+        temp_var2 = (((temp_var2 * temp_var2) >> 12) * self.trim_values["dig_t3"]) >> 14
         temp_fine = temp_var1 + temp_var2
         
         temp = ((temp_fine * 5) + 128) >> 8
@@ -83,27 +93,20 @@ class bmp280:
         # Calculating the pressure (hPa) using the trim values
         press_var1 = temp_fine - 128000
         press_var2 = press_var1 * press_var1 * self.trim_values["dig_p6"]
-        press_var2 += self.trim_values["dig_p5"] << 17
+        press_var2 += (press_var1 * self.trim_values["dig_p5"]) << 17
         press_var2 += self.trim_values["dig_p4"] << 35
-        press_var1 = ((press_var1 * press_var2 * self.trim_values["dig_p3"]) >> 8) + ((press_var1 * self.trim_values["dig_p2"]) << 12)
+        press_var1 = ((press_var1 * press_var1 * self.trim_values["dig_p3"]) >> 8) + ((press_var1 * self.trim_values["dig_p2"]) << 12)
         press_var1 = (((1<<47) + press_var1) * self.trim_values["dig_p1"]) >> 33
         
         if press_var1 == 0:
             press = 0
         else:
-            press = (1048576 - press_raw - (press_var2 >> 12)) * 3125
-            
-            if press < 2147483648:
-                press = (press << 1)//press_var1
-            else:
-                press = (press//press_var1) * 2
-            
+            press = ((((1048576 - press_raw) << 31) - press_var2) * 3125) // press_var1
+
             press_var1 = (self.trim_values["dig_p9"] * (press >> 13) * (press >> 13)) >> 25
             press_var2 = (self.trim_values["dig_p8"] * press) >> 19
             
             press = ((press + press_var1 + press_var2) >> 8) + (self.trim_values["dig_p7"] << 4)
-            
-            press /= 256
         
         return press, temp
     
@@ -118,7 +121,7 @@ class bmp280:
 
 if __name__ == "__main__":
     import time
-    module = bmp280(47, 48) # INPUT YOUR SCL/SDA PINS HERE
+    module = BMP280(47, 48) # INPUT YOUR SCL/SDA PINS HERE
     while True:
         print(module.get_press_temp_alt())
         time.sleep(1)

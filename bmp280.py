@@ -26,8 +26,12 @@ class BMP280:
         self._setup()
         self._get_trim_values()
         
+        self.p0 = self.t0 = 0
+        
         # Reading initial pressure/temperature values (used to calculate altitude readings)
-        self.p0, self.t0 = self.get_press_temp()
+        while (not self.p0) and (not self.t0):
+            print(self.p0, self.t0)
+            self.p0, self.t0 = self.get_press_temp()
         self.t0 += 273.15 # Converting to degrees Kelvin
         
         self.baro_equation_coefficient = (8.314*0.0065)/(9.80665*0.028964) # coefficient required for barometric equation: Rg*L/gM
@@ -36,9 +40,6 @@ class BMP280:
         print(string)
     
     def _setup(self):
-        # Resetting sensor
-        self.bmp280.writeto_mem(self.bmpaddress, self.registers["reset"], bytes([0xB6]))
-        
         # Waking sensor up and setting oversampling rates for pressure/temperature measurement
         self.bmp280.writeto_mem(self.bmpaddress, self.registers["measurement_ctrl"], bytes([0x57]))
         
@@ -73,7 +74,7 @@ class BMP280:
         
         # Decoding temp/pressure bytearrays - the data comes packaged in format MSB - LSB - XLSB
         pressure_decoded = (data[0] << 12) | (data[1] << 4) | (data[2] >> 4)
-        temp_decoded = (temp[3] << 12) | (temp[4] << 4) | (temp[5] >> 4)
+        temp_decoded = (data[3] << 12) | (data[4] << 4) | (data[5] >> 4)
         
         return pressure_decoded, temp_decoded
     
@@ -86,7 +87,7 @@ class BMP280:
         temp_var2 = (temp_raw >> 4) - self.trim_values["dig_t1"]
         temp_var2 = (((temp_var2 * temp_var2) >> 12) * self.trim_values["dig_t3"]) >> 14
         temp_fine = temp_var1 + temp_var2
-        
+
         temp = ((temp_fine * 5) + 128) >> 8
         temp /= 100
         
@@ -107,6 +108,8 @@ class BMP280:
             press_var2 = (self.trim_values["dig_p8"] * press) >> 19
             
             press = ((press + press_var1 + press_var2) >> 8) + (self.trim_values["dig_p7"] << 4)
+            
+            press /= 25600
         
         return press, temp
     
@@ -121,7 +124,7 @@ class BMP280:
 
 if __name__ == "__main__":
     import time
-    module = BMP280(47, 48) # INPUT YOUR SCL/SDA PINS HERE
+    module = BMP280(46, 3) # INPUT YOUR SCL/SDA PINS HERE
     while True:
         print(module.get_press_temp_alt())
         time.sleep(1)

@@ -3,6 +3,19 @@ import struct
 
 class BMP280:
     def __init__(self, scl, sda, address=0x76, init_gps_alt=0):
+        """
+        Driver for the BMP280 temperature and pressure module for an ESP32 running micropython.
+        
+        Parameters for driver initialisation: ESP32 pin number connected to module SCL, followed by pin number connected to SDA
+        Optional parameters:
+            Address (address) - set to 0x76 by default, but will need to be set to 0x77 is the SDO pin is pulled high.
+            Initial Altitude (init_gps_alt) - this offset will be added to all altitude outputs. Enables an absolute altitude output instead of altitude relative to the starting location.
+        
+        Available methods:
+            get_press_temp() - returns temperature in degrees celcius, and pressure in hPa
+            get_press_temp_alt() - returns pressure and temperature, as before, but also the module's altitude relative to its starting altitude.
+        """
+        
         self.bmp280 = SoftI2C(scl=Pin(scl), sda=Pin(sda), freq=400000)
         self.starting_gpsalt = init_gps_alt
         
@@ -16,8 +29,8 @@ class BMP280:
             "measurement_ctrl" : 0xF4,
             "config" : 0xF5,
             
-            "pressure" : 0xF7, # Goes on to 0xF9, i.e. 3 bytes
-            "temp" : 0xFA, # Goes on to 0xFC, i.e. 3 bytes
+            "pressure" : 0xF7, # 3 bytes
+            "temp" : 0xFA, # 3 bytes
             }
         
         self.trim_values = {}
@@ -79,6 +92,14 @@ class BMP280:
         return pressure_decoded, temp_decoded
     
     def get_press_temp(self):
+        """
+        Returns pressure and temperature values from the BMP280 module as floats.
+        
+        Pressure in hPa, temperature in degrees celcius.
+        
+        No input parameters accepted
+        """
+        
         # Getting raw pressure/temp data
         press_raw, temp_raw = self._get_pressure_temp_raw()
         
@@ -114,6 +135,18 @@ class BMP280:
         return press, temp
     
     def get_press_temp_alt(self):
+        """
+        Gets pressure and temperature data, then uses that to calculate the module's altitude relative to its starting location.
+        Can also calculate absolute altitude if the initial altitude is passed in on driver initialisation.
+        
+        Returns pressure, temperature, altitude:
+        Pressure in hPa
+        Temperature in degrees celcius
+        Altitude in meters
+        
+        No input parameters accepted
+        """
+        
         press, temp = self.get_press_temp()
         
         # Calculating altitude (in m) based on pressure using barometric equation

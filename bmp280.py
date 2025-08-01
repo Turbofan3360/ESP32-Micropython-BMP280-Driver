@@ -153,7 +153,16 @@ class BMP280:
         alt = self.starting_gpsalt + (self.t0/0.0065)*(1-pow(press/self.p0, self.baro_equation_coefficient))
         
         return press, temp, alt
+    
+    def update_current_alt(self, alt):
+        """
+        Enables you to update the current barometer altitude, incase the altitude readings are drifting (e.g. due to weather patterns)
+        """
         
+        self.starting_gpsalt = alt
+        self.p0, self.t0 = self.get_press_temp()
+        
+        self.t0 += 273.15
 
 if __name__ == "__main__":
     import time

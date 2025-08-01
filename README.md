@@ -2,7 +2,7 @@
 
 ### The Code: ###
 
-This is an ESP32 micropython driver for the Bosch BMP280 barometer/temperature chip. It uses the I2C protocol to read the air pressure and temperature from the chip, and then uses this data to calculate the chip's altitude (Note: this altitude reading could drift over long periods due to weather patterns).
+This is an ESP32 micropython driver for the Bosch BMP280 barometer/temperature chip. It uses the I2C protocol to read the air pressure and temperature from the chip, and then uses this data to calculate the chip's altitude (Note: this altitude reading could drift over long periods due to weather patterns). If you detect that the altitude readings are drifting due to weather patterns, you can call the update_current_alt(alt=...) method, feeding it your current altitude. This updates the the reference pressure/temperatures, still giving you your absolute altitude.
 
 The code is currently configured to set the BMP280 up for an ultra-high resolution indoor navigation application - see Section 3.4 of the datasheet (linked in references below). The particular settings can be changed in the _setup method in the driver - just make sure you read the datasheet carefully first!
 
@@ -17,6 +17,9 @@ sensor = BMP.BMP280(47, 48, address=0x77, init_gps_alt=5)
 
 press, temp, alt = sensor.get_press_temp_alt()
 press, temp = sensor.get_press_temp()
+
+alt = gps.altitude() # For example
+sensor.update_current_altitude(alt)
 ```
 
 For most usage, you won't need to include the address/init_gps_alt parameters in the driver set up, but I included them for completeness.

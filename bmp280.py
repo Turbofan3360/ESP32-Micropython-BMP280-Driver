@@ -1,5 +1,5 @@
 from machine import SoftI2C, Pin
-import struct
+import struct, time
 
 class BMP280:
     def __init__(self, scl, sda, address=0x76, init_gps_alt=0):

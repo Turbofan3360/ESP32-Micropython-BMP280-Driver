@@ -38,14 +38,22 @@ class BMP280:
         # Setting up sensor and getting factory-programmed trim values from the BMP280's NVM
         self._setup()
         self._get_trim_values()
+        p_total = t_total = 0
         
-        self.p0 = self.t0 = 0
+        time.sleep(1)
         
         # Reading initial pressure/temperature values (used to calculate altitude readings)
-        while (not self.p0) and (not self.t0):
-            print(self.p0, self.t0)
-            self.p0, self.t0 = self.get_press_temp()
-        self.t0 += 273.15 # Converting to degrees Kelvin
+        for i in range(10):
+            p0, t0 = self.get_press_temp()
+            t0 += 273.15 # Converting to degrees Kelvin
+            
+            p_total += p0
+            t_total += t0
+            
+            time.sleep(0.1)
+            
+        self.p0 = p_total/10
+        self.t0 = t_total/10
         
         self.baro_equation_coefficient = (8.314*0.0065)/(9.80665*0.028964) # coefficient required for barometric equation: Rg*L/gM
     
